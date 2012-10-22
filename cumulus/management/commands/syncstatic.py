@@ -1,6 +1,7 @@
 import datetime
 import optparse
 import os
+from urlparse import urlparse
 
 import cloudfiles
 
@@ -31,6 +32,9 @@ class Command(BaseCommand):
     # paths
     DIRECTORY        = os.path.abspath(settings.STATIC_ROOT)
     STATIC_URL       = settings.STATIC_URL
+
+    if STATIC_URL.startswith('http'):
+        STATIC_URL = urlparse(STATIC_URL).path
 
     if not DIRECTORY.endswith('/'):
         DIRECTORY = DIRECTORY + '/'
