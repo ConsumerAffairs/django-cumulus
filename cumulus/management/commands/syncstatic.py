@@ -1,6 +1,7 @@
 import datetime
 import optparse
 import os
+from ssl import SSLError
 from urlparse import urlparse
 
 import cloudfiles
@@ -8,6 +9,7 @@ import cloudfiles
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from cumulus.settings import CUMULUS
+
 
 class Command(BaseCommand):
     help = "Synchronizes static media to cloud files."
@@ -48,6 +50,7 @@ class Command(BaseCommand):
     update_count = 0
     skip_count = 0
     delete_count = 0
+    retries = 0
     conn = None
     container = None
 
@@ -88,13 +91,52 @@ class Command(BaseCommand):
 
         # print out the final tally to the cmd line
         self.update_count = self.upload_count - self.create_count
-        print
         if self.test_run:
             print "Test run complete with the following results:"
-        print "Skipped %d. Created %d. Updated %d. Deleted %d." % (
-            self.skip_count, self.create_count, self.update_count, self.delete_count)
+        print "Skipped %d. Created %d. Updated %d. Deleted %d. Total Retries %d." % (
+            self.skip_count, self.create_count, self.update_count, self.delete_count,
+            self.retries)
 
-    def upload_files(self, arg, dirname, names):
+    def get_or_create(self, name, max_retries=10):
+        cloud_obj = None
+        retries = 0
+        while retries < max_retries:
+            try:
+                cloud_obj = self.container.get_object(name)
+            except cloudfiles.errors.NoSuchObject:
+                try:
+                    cloud_obj = self.container.create_object(name)
+                except SSLError:
+                    retries += 1
+                else:
+                    self.create_count += 1
+                    break
+            except SSLError:
+                retries += 1
+            else:
+                break
+        if cloud_obj:
+            self.retries += retries
+            return cloud_obj
+        else:
+            raise Exception(
+                'Failed to upload %s after %s retries' % (name, retries))
+
+    def load_from_filename(self, cloud_obj, file_path, max_retries=10):
+        retries = 0
+        while retries < max_retries:
+            try:
+                cloud_obj.load_from_filename(file_path)
+            except SSLError:
+                retries += 1
+            else:
+                self.retries += retries
+                return
+        else:
+            raise Exception(
+                'load_from_filename failed after %s retries' % retries)
+
+    def upload_files(self, arg, dirname, names, max_retries=10):
         # upload or skip items
         for item in names:
             if item in self.FILTER_LIST:
@@ -107,11 +149,8 @@ class Command(BaseCommand):
             object_name = self.STATIC_URL + file_path.split(self.DIRECTORY)[1]
             self.local_object_names.append(object_name)
 
-            try:
-                cloud_obj = self.container.get_object(object_name)
-            except cloudfiles.errors.NoSuchObject:
-                cloud_obj = self.container.create_object(object_name)
-                self.create_count += 1
+            cloud_obj = self.get_or_create(
+                object_name, max_retries=max_retries)
 
             cloud_datetime = (cloud_obj.last_modified and
                               datetime.datetime.strptime(
@@ -127,7 +166,8 @@ class Command(BaseCommand):
                 continue
 
             if not self.test_run:
-                cloud_obj.load_from_filename(file_path)
+                self.load_from_filename(
+                    cloud_obj, file_path, max_retries=max_retries)
             self.upload_count += 1
             if self.verbosity > 1:
                 print "Uploaded", cloud_obj.name
