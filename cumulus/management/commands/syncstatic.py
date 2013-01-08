@@ -3,6 +3,7 @@ import optparse
 import os
 from ssl import SSLError
 from urlparse import urlparse
+from httplib import CannotSendRequest
 
 import cloudfiles
 
@@ -106,12 +107,12 @@ class Command(BaseCommand):
             except cloudfiles.errors.NoSuchObject:
                 try:
                     cloud_obj = self.container.create_object(name)
-                except SSLError:
+                except (SSLError, CannotSendRequest):
                     retries += 1
                 else:
                     self.create_count += 1
                     break
-            except SSLError:
+            except (SSLError, CannotSendRequest):
                 retries += 1
             else:
                 break
@@ -127,7 +128,7 @@ class Command(BaseCommand):
         while retries < max_retries:
             try:
                 cloud_obj.load_from_filename(file_path)
-            except SSLError:
+            except (SSLError, CannotSendRequest):
                 retries += 1
             else:
                 self.retries += retries
