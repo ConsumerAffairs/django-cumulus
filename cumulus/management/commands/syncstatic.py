@@ -107,12 +107,16 @@ class Command(BaseCommand):
             except cloudfiles.errors.NoSuchObject:
                 try:
                     cloud_obj = self.container.create_object(name)
-                except (SSLError, CannotSendRequest):
+                except (SSLError, CannotSendRequest), e:
+                    if self.verbosity > 1:
+                        print e, name
                     retries += 1
                 else:
                     self.create_count += 1
                     break
-            except (SSLError, CannotSendRequest):
+            except (SSLError, CannotSendRequest), e:
+                if self.verbosity > 1:
+                    print e, name
                 retries += 1
             else:
                 break
@@ -128,7 +132,9 @@ class Command(BaseCommand):
         while retries < max_retries:
             try:
                 cloud_obj.load_from_filename(file_path)
-            except (SSLError, CannotSendRequest):
+            except (SSLError, CannotSendRequest), e:
+                if self.verbosity > 1:
+                    print e, cloud_obj
                 retries += 1
             else:
                 self.retries += retries
