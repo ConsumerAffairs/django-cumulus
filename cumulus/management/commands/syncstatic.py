@@ -1,9 +1,11 @@
 import datetime
 import optparse
 import os
+import traceback
 from ssl import SSLError
 from urlparse import urlparse
 from httplib import CannotSendRequest
+from time import sleep
 
 import cloudfiles
 
@@ -107,19 +109,22 @@ class Command(BaseCommand):
             except cloudfiles.errors.NoSuchObject:
                 try:
                     cloud_obj = self.container.create_object(name)
-                except (SSLError, CannotSendRequest), e:
+                except (SSLError, CannotSendRequest):
                     if self.verbosity > 1:
-                        print e, name
+                        print name
+                        traceback.print_exc()
                     retries += 1
                 else:
                     self.create_count += 1
                     break
-            except (SSLError, CannotSendRequest), e:
+            except (SSLError, CannotSendRequest):
                 if self.verbosity > 1:
-                    print e, name
+                    print name
+                    traceback.print_exc()
                 retries += 1
             else:
                 break
+            sleep(1)
         if cloud_obj:
             self.retries += retries
             return cloud_obj
@@ -132,13 +137,15 @@ class Command(BaseCommand):
         while retries < max_retries:
             try:
                 cloud_obj.load_from_filename(file_path)
-            except (SSLError, CannotSendRequest), e:
+            except (SSLError, CannotSendRequest):
                 if self.verbosity > 1:
-                    print e, cloud_obj
+                    print cloud_obj
+                    traceback.print_exc()
                 retries += 1
             else:
                 self.retries += retries
                 return
+            sleep(1)
         else:
             raise Exception(
                 'load_from_filename failed after %s retries' % retries)
