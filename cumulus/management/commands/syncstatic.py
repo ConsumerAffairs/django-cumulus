@@ -63,11 +63,13 @@ class Command(BaseCommand):
         self.verbosity = int(options.get('verbosity'))
         self.sync_files()
 
-    def sync_files(self):
+    def get_connection(self):
         self.conn = cloudfiles.get_connection(username = self.USERNAME,
                                               api_key = self.API_KEY,
                                               authurl = self.AUTH_URL,
                                               servicenet=self.USE_SERVICENET)
+    def sync_files(self):
+        self.get_connection()
                                               
         try:
             self.container = self.conn.get_container(self.STATIC_CONTAINER)
@@ -113,6 +115,7 @@ class Command(BaseCommand):
                     if self.verbosity > 1:
                         print name
                         traceback.print_exc()
+                    self.get_connection()
                     retries += 1
                 else:
                     self.create_count += 1
@@ -121,6 +124,7 @@ class Command(BaseCommand):
                 if self.verbosity > 1:
                     print name
                     traceback.print_exc()
+                self.get_connection()
                 retries += 1
             else:
                 break
@@ -141,6 +145,7 @@ class Command(BaseCommand):
                 if self.verbosity > 1:
                     print cloud_obj
                     traceback.print_exc()
+                self.get_connection()
                 retries += 1
             else:
                 self.retries += retries
