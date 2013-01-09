@@ -8,7 +8,7 @@ CUMULUS = {
     'CNAMES': None,
     'CONTAINER': None,
     'SERVICENET': False,
-    'TIMEOUT': 5,
+    'TIMEOUT': 60,
     'TTL': 600,
     'USE_SSL': False,
     'USERNAME': None,
