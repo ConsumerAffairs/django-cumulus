@@ -102,7 +102,7 @@ class Command(BaseCommand):
             self.skip_count, self.create_count, self.update_count, self.delete_count,
             self.retries)
 
-    def get_or_create(self, name, max_retries=10):
+    def get_or_create(self, name, max_retries=30):
         cloud_obj = None
         retries = 0
         while retries < max_retries:
@@ -128,7 +128,7 @@ class Command(BaseCommand):
                 retries += 1
             else:
                 break
-            sleep(1)
+            sleep(2)
         if cloud_obj:
             self.retries += retries
             return cloud_obj
@@ -136,7 +136,7 @@ class Command(BaseCommand):
             raise Exception(
                 'Failed to upload %s after %s retries' % (name, retries))
 
-    def load_from_filename(self, cloud_obj, file_path, max_retries=10):
+    def load_from_filename(self, cloud_obj, file_path, max_retries=30):
         retries = 0
         while retries < max_retries:
             try:
@@ -150,12 +150,12 @@ class Command(BaseCommand):
             else:
                 self.retries += retries
                 return
-            sleep(1)
+            sleep(2)
         else:
             raise Exception(
                 'load_from_filename failed after %s retries' % retries)
 
-    def upload_files(self, arg, dirname, names, max_retries=10):
+    def upload_files(self, arg, dirname, names, max_retries=30):
         # upload or skip items
         for item in names:
             if item in self.FILTER_LIST:
