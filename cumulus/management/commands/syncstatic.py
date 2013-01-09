@@ -64,10 +64,11 @@ class Command(BaseCommand):
         self.sync_files()
 
     def get_connection(self):
-        self.conn = cloudfiles.get_connection(username = self.USERNAME,
-                                              api_key = self.API_KEY,
-                                              authurl = self.AUTH_URL,
-                                              servicenet=self.USE_SERVICENET)
+        self.conn = cloudfiles.get_connection(
+            username=self.USERNAME, api_key=self.API_KEY,
+            authurl=self.AUTH_URL, servicenet=self.USE_SERVICENET,
+            timeout=60)
+
     def sync_files(self):
         self.get_connection()
                                               
