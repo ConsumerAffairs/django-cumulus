@@ -3,12 +3,46 @@ import os
 from StringIO import StringIO
 
 import cloudfiles
+from cloudfiles.connection import Connection
 from cloudfiles.errors import NoSuchObject, ResponseError
+from cloudfiles.utils import unicode_quote
 
+from django.conf import settings
 from django.core.files import File
 from django.core.files.storage import Storage
+from statsd import StatsClient
 
 from .settings import CUMULUS
+
+
+class TimedConnection(Connection):
+    """A Connection that sends timing info to statsd"""
+    def __init__(self, **kwargs):
+        statsd_kwargs = kwargs.pop('statsd_kwargs', {})
+        super(TimedConnection, self).__init__(**kwargs)
+        self.statsd_client = StatsClient(**statsd_kwargs)
+
+    def cdn_request(self, method, path=[], data='', hdrs=None):
+        path_name= '_'.join([unicode_quote(i) for i in path])
+        if path_name:
+            timer_name = '%s.%s' % (method, path_name)
+        else:
+            timer_name = method
+        with self.statsd_client.timer(timer_name):
+            result = super(TimedConnection, self).cdn_request(
+                self, method, path_name, data, hdrs)
+        return result
+
+    def make_request(self, method, path=[], data='', hdrs=None, parms=None):
+        path_name= '_'.join([unicode_quote(i) for i in path])
+        if path_name:
+            timer_name = '%s.%s' % (method, path_name)
+        else:
+            timer_name = method
+        with self.statsd_client.timer(timer_name):
+            result = super(TimedConnection, self).make_request(
+                self, method, path_name, data, hdrs, parms)
+        return result
 
 
 class CloudFilesStorage(Storage):
@@ -45,12 +79,15 @@ class CloudFilesStorage(Storage):
 
     def _get_connection(self):
         if not hasattr(self, '_connection'):
-            self._connection = cloudfiles.get_connection(
+            statsd_kwargs = {
+                'host': getattr(settings, 'STATSD_HOST', 'localhost')}
+            self._connection = TimedConnection(
                                   username=self.username,
                                   api_key=self.api_key,
                                   authurl = self.auth_url,
                                   timeout=self.timeout,
                                   servicenet=self.use_servicenet,
+                                  statsd_kwargs=statsd_kwargs,
                                   **self.connection_kwargs)
         return self._connection
 
