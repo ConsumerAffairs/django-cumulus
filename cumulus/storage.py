@@ -20,7 +20,7 @@ class TimedConnection(Connection):
         super(TimedConnection, self).__init__(**kwargs)
         self.statsd_client = get_client()
 
-    def cdn_request(self, method, path=[], data='', hdrs=None):
+    def cdn_request(self, method, path=[], **kwargs):
         base_name = 'cloudfiles.cdn_request'
         path_name= '_'.join([unicode_quote(i) for i in path])
         if path_name:
@@ -29,10 +29,10 @@ class TimedConnection(Connection):
             timer_name = '%s.%s' % (base_name, method)
         with self.statsd_client.timer(timer_name):
             result = super(TimedConnection, self).cdn_request(
-                self, method, path, data, hdrs)
+                self, method, path=path, **kwargs)
         return result
 
-    def make_request(self, method, path=[], data='', hdrs=None, parms=None):
+    def make_request(self, method, path=[], **kwargs):
         base_name = 'cloudfiles.make_request'
         path_name= '_'.join([unicode_quote(i) for i in path])
         if path_name:
@@ -41,7 +41,7 @@ class TimedConnection(Connection):
             timer_name = '%s.%s' % (base_name, method)
         with self.statsd_client.timer(timer_name):
             result = super(TimedConnection, self).make_request(
-                self, method, path, data, hdrs, parms)
+                self, method, path=path, **kwargs)
         return result
 
 
