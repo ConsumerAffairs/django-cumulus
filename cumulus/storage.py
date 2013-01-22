@@ -20,28 +20,29 @@ class TimedConnection(Connection):
         super(TimedConnection, self).__init__(**kwargs)
         self.statsd_client = get_client()
 
-    def cdn_request(self, method, path=[], **kwargs):
-        base_name = 'cloudfiles.cdn_request'
-        path_name= '_'.join([unicode_quote(i) for i in path])
-        if path_name:
-            timer_name = '%s.%s.%s' % (base_name, method, path_name)
+    def statsd_timer_name(self, fname, method, path):
+        base_name = 'cloudfiles.%s' % fname
+        if path and path[0]:
+            if len(path) > 1 or '/' in path[0]:
+                timer_name = '%s.%s.%s_FILE' % (base_name, method, path[0])
+            else:
+                timer_name = '%s.%s.%s' % (base_name, method, path[0])
         else:
-            timer_name = '%s.%s' % (base_name, method)
+            timer_name = '%s.%s.ROOT' % (base_name, method)
+        return timer_name
+
+    def cdn_request(self, method, path=[], data='', hdrs=None):
+        timer_name = self.statsd_timer_name('cdn_request', method, path)
         with self.statsd_client.timer(timer_name):
             result = super(TimedConnection, self).cdn_request(
-                self, method, path=path, **kwargs)
+                method, path, data, hdrs)
         return result
 
-    def make_request(self, method, path=[], **kwargs):
-        base_name = 'cloudfiles.make_request'
-        path_name= '_'.join([unicode_quote(i) for i in path])
-        if path_name:
-            timer_name = '%s.%s.%s' % (base_name, method, path_name)
-        else:
-            timer_name = '%s.%s' % (base_name, method)
+    def make_request(self, method, path=[], data='', hdrs=None, parms=None):
+        timer_name = self.statsd_timer_name('make_request', method, path)
         with self.statsd_client.timer(timer_name):
             result = super(TimedConnection, self).make_request(
-                self, method, path=path, **kwargs)
+                method, path, data, hdrs, parms)
         return result
 
 
