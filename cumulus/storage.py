@@ -29,7 +29,7 @@ class TimedConnection(Connection):
             timer_name = '%s.%s' % (base_name, method)
         with self.statsd_client.timer(timer_name):
             result = super(TimedConnection, self).cdn_request(
-                self, method, path_name, data, hdrs)
+                self, method, path, data, hdrs)
         return result
 
     def make_request(self, method, path=[], data='', hdrs=None, parms=None):
@@ -41,7 +41,7 @@ class TimedConnection(Connection):
             timer_name = '%s.%s' % (base_name, method)
         with self.statsd_client.timer(timer_name):
             result = super(TimedConnection, self).make_request(
-                self, method, path_name, data, hdrs, parms)
+                self, method, path, data, hdrs, parms)
         return result
 
 
