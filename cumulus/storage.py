@@ -137,6 +137,13 @@ class CloudFilesStorage(Storage):
         return CloudFilesStorageFile(storage=self, name=name)
 
     def _save(self, name, content):
+        path = [self.container.name, name]
+        timer_name = self.connection.statsd_timer_name('storage_save', 'SAVE', path)
+        with self.connection.statsd_client.timer(timer_name):
+            out_name = self._save_inner(name, content)
+        return out_name
+
+    def _save_inner(self, name, content):
         """
         Use the Cloud Files service to write ``content`` to a remote file
         (called ``name``).
